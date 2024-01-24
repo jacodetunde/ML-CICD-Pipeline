@@ -7,7 +7,7 @@ pipeline {
         ECR_REPOSITORY_NAME = 'jjtech-demo' // Replace with your ECR repository name
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
-        CLUSTER_NAME = 'jjtech-demo-cluster'
+        // CLUSTER_NAME = 'jjtech-demo-cluster'
     }
 
     stages {
@@ -59,16 +59,31 @@ pipeline {
                 }
             }
         }
-    
-        stage("Deploy to EKS") {
-            steps {  
-                script {
-                    sh 'aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION'
-                    sh 'sed -i "s/replaceImageTag/$IMAGE_TAG/g" k8s-manifest/deployment.yaml'
-                    sh 'kubectl apply -f k8s-manifest/deployment.yaml'
-                }
-            }
+        stage("Deploy to EKS"){
+        environment {
+        region = 'us-east-1'
+        clusterName = 'jjtech-demo-cluster'
+      }       
+        steps {  
+          script {
+            sh "sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' k8s-manifests/deployment.yaml"
+            dir('k8s-manifests'){      
+            sh "aws eks update-kubeconfig --name ${clusterName} --region ${region}"
+            sh "kubectl apply -f ."
+      }
         }
+      }
+    }
+    
+        // stage("Deploy to EKS") {
+        //     steps {  
+        //         script {
+        //             sh 'aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION'
+        //             sh 'sed -i "s/replaceImageTag/$IMAGE_TAG/g" k8s-manifest/deployment.yaml'
+        //             sh 'kubectl apply -f k8s-manifest/deployment.yaml'
+        //         }
+        //     }
+        // }
     }
   
     post {
