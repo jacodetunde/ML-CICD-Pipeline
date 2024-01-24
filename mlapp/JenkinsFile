@@ -69,7 +69,7 @@ pipeline {
                 script {
                     // Using withCredentials to inject the AWS credentials
                     withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'your-aws-credentials-id']
+                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws_access_key_id']
                     ]) {
                         // Replace the image tag in the deployment manifest
                         sh "sed -i 's/replaceImageTag/${IMAGE_TAG}/g' k8s-manifest/deployment.yaml"
