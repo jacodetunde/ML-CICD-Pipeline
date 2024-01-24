@@ -1,92 +1,76 @@
 pipeline {
-  agent any
+    agent any
   
-  environment {
-    AWS_DEFAULT_REGION = "us-east-1"
-    AWS_ACCOUNT_ID = 'your-aws-account-id' // replace with your AWS account ID
-    ECR_REPOSITORY_NAME = 'your-ecr-repo-name' // replace with your ECR repository name
-    IMAGE_TAG = "${env.BUILD_NUMBER}"
-    ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
-  }
-
-  stages {
-    stage('Git Checkout') {
-      steps {
-        echo 'Cloning the application code...'
-        // Assuming the Git plugin is set up in Jenkins, the checkout step should be automatic
-        // This echo step is not really needed if you're just using the checkout scm step
-      }
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = '369886907351' // Replace with your AWS account ID
+        ECR_REPOSITORY_NAME = 'jjtech-demo' // Replace with your ECR repository name
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
+        CLUSTER_NAME = 'jjtech-demo-cluster'
     }
-    
-    stage('Continuous Integration') {
-      steps {
-        script {
-          // CI steps here, including running linting, tests, etc.
-          sh """
-            cd mlapp
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install tox tox-gh-actions
-            tox
-          """
+
+    stages {
+        stage('Setup') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
     
-    stage('Build and Push Docker Image') {
-      steps {
-        script {
-          // Login to AWS ECR
-          sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-          
-          // Build the Docker image
-          sh "cd mlapp && docker build -t ${ECR_REPOSITORY_NAME}:${IMAGE_TAG} -f Dockerfile ."
-
-          // Tag and push the Docker image to ECR
-          sh "docker tag ${ECR_REPOSITORY_NAME}:${IMAGE_TAG} ${ECR_REGISTRY}:${IMAGE_TAG}"
-          sh "docker push ${ECR_REGISTRY}:${IMAGE_TAG}"
-
-          // Optionally remove the local images to keep the Jenkins agent clean
-          sh "docker rmi ${ECR_REGISTRY}:${IMAGE_TAG}"
-          sh "docker rmi ${ECR_REPOSITORY_NAME}:${IMAGE_TAG}"
+        stage('Continuous Integration') {
+            steps {
+                script {
+                    sh '''
+                        cd mlapp
+                        python -m pip install --upgrade pip
+                        pip install -r requirements.txt
+                        pip install tox tox-gh-actions
+                        tox
+                    '''
+                }
+            }
         }
-      }
-    }
     
-    stage('Install kubectl') {
-      steps {
-        script {
-          // Install kubectl
-          sh """
-            KUBECTL_VERSION="v1.24.0"
-            curl -LO "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-            chmod +x ./kubectl
-            sudo mv ./kubectl /usr/local/bin/kubectl
-          """
+        stage('Build and Push Docker Image') {
+            steps {
+                script {
+                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
+                    sh 'cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .'
+                    sh 'docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG'
+                    sh 'docker push $ECR_REGISTRY:$IMAGE_TAG'
+                    sh 'docker rmi $ECR_REGISTRY:$IMAGE_TAG'
+                    sh 'docker rmi $ECR_REPOSITORY_NAME:$IMAGE_TAG'
+                }
+            }
         }
-      }
-    }
     
-    stage("Deploy to EKS") {
-      steps {  
-        script {
-          // Update the EKS kubeconfig
-          sh "aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
-
-          // Replace the image tag in the Kubernetes deployment manifest
-          sh "sed -i 's/replaceImageTag/${IMAGE_TAG}/g' k8s-manifest/deployment.yaml"
-
-          // Deploy to EKS
-          sh "kubectl apply -f k8s-manifest/deployment.yaml"
+        stage('Install kubectl') {
+            steps {
+                script {
+                    sh '''
+                        KUBECTL_VERSION="v1.24.0"
+                        curl -LO "https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+                        chmod +x ./kubectl
+                        sudo mv ./kubectl /usr/local/bin/kubectl
+                    '''
+                }
+            }
         }
-      }
+    
+        stage("Deploy to EKS") {
+            steps {  
+                script {
+                    sh 'aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION'
+                    sh 'sed -i "s/replaceImageTag/$IMAGE_TAG/g" k8s-manifest/deployment.yaml'
+                    sh 'kubectl apply -f k8s-manifest/deployment.yaml'
+                }
+            }
+        }
     }
-  }
   
-  post {
-    always {
-      // Clean up workspace after build completion
-      cleanWs()
+    post {
+        always {
+            cleanWs()
+        }
     }
-  }
 }
