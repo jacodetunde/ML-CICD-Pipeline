@@ -7,7 +7,6 @@ pipeline {
         ECR_REPOSITORY_NAME = 'jjtech-demo' // Replace with your ECR repository name
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
-        // CLUSTER_NAME = 'jjtech-demo-cluster'
     }
 
     stages {
@@ -25,7 +24,7 @@ pipeline {
                         python3 -m venv venv
                         source venv/bin/activate
                         pip install --upgrade pip
-                        python3 -m pip install "pluggy<1.0,>=0.12"  
+                        pip install "pluggy<1.0,>=0.12"  
                         pip install -r requirements.txt
                         pip install tox
                         tox
@@ -59,35 +58,32 @@ pipeline {
                 }
             }
         }
+        
         stage("Deploy to EKS"){
-        environment {
-        region = 'us-east-1'
-        clusterName = 'jjtech-demo-cluster'
-      }       
-        steps {  
-          script {
-            sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifests/deployment.yaml"
-            dir('k8s-manifests'){      
-            sh "aws eks update-kubeconfig --name ${clusterName} --region ${region}"
-            sh "kubectl apply -f ."
-      }
+            environment {
+                // These are specific to this stage, so we declare them here
+                REGION = 'us-east-1'
+                CLUSTER_NAME = 'jjtech-demo-cluster'
+            }
+            steps {  
+                script {
+                    // Replace the image tag in the deployment manifest
+                    sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifests/deployment.yaml"
+                    // Change to the k8s-manifests directory and apply the manifest
+                    dir('k8s-manifests') {
+                        // Configure kubectl to connect to the EKS cluster
+                        sh "aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION"
+                        // Apply the Kubernetes deployment manifest
+                        sh "kubectl apply -f ."
+                    }
+                }
+            }
         }
-      }
-    }
-    
-        // stage("Deploy to EKS") {
-        //     steps {  
-        //         script {
-        //             sh 'aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION'
-        //             sh 'sed -i "s/replaceImageTag/$IMAGE_TAG/g" k8s-manifest/deployment.yaml'
-        //             sh 'kubectl apply -f k8s-manifest/deployment.yaml'
-        //         }
-        //     }
-        // }
     }
   
     post {
         always {
+            // Clean the workspace after the pipeline is finished
             cleanWs()
         }
     }
