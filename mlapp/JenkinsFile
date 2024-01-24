@@ -68,9 +68,9 @@ pipeline {
             steps {  
                 script {
                     // Replace the image tag in the deployment manifest
-                    sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifests/deployment.yaml"
+                    sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifest/deployment.yaml"
                     // Change to the k8s-manifests directory and apply the manifest
-                    dir('k8s-manifests') {
+                    dir('k8s-manifest') {
                         // Configure kubectl to connect to the EKS cluster
                         sh "aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION"
                         // Apply the Kubernetes deployment manifest
