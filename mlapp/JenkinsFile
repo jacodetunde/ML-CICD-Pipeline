@@ -36,7 +36,7 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | sudo docker login --username AWS --password-stdin $ECR_REGISTRY'
+                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
                     sh 'cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .'
                     sh 'docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG'
                     sh 'docker push $ECR_REGISTRY:$IMAGE_TAG'
@@ -72,7 +72,7 @@ pipeline {
                     // Change to the k8s-manifests directory and apply the manifest
                     dir('k8s-manifest') {
                         // Configure kubectl to connect to the EKS cluster
-                        sh "sudo aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION"
+                        sh "aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION"
                         // Apply the Kubernetes deployment manifest
                         sh "sudo kubectl apply -f ."
                     }
