@@ -25,7 +25,7 @@ pipeline {
                         python3 -m venv venv
                         source venv/bin/activate
                         pip install --upgrade pip
-                        pip install "pluggy<1.0,>=0.12"  
+                        pip install "pluggy<1.0,>=0.12"
                         pip install -r requirements.txt
                         pip install tox
                         tox
@@ -37,13 +37,16 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
-                    sh 'cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .'
-                    sh 'docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG'
-                    sh 'docker push $ECR_REGISTRY:$IMAGE_TAG'
-                    // Clean up Docker images after pushing
-                    sh 'docker rmi $ECR_REGISTRY:$IMAGE_TAG'
-                    sh 'docker rmi $ECR_REPOSITORY_NAME:$IMAGE_TAG'
+                    withCredentials([string(credentialsId: 'my-aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                        sh '''
+                            echo $AWS_CREDENTIALS | docker login --username AWS --password-stdin $ECR_REGISTRY
+                            cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .
+                            docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG
+                            docker push $ECR_REGISTRY:$IMAGE_TAG
+                            docker rmi $ECR_REGISTRY:$IMAGE_TAG
+                            docker rmi $ECR_REPOSITORY_NAME:$IMAGE_TAG
+                        '''
+                    }
                 }
             }
         }
@@ -51,14 +54,12 @@ pipeline {
         stage('Install kubectl') {
             steps {
                 script {
-                    // Check if kubectl is already installed and at the desired version
-                    sh """
-                        if ! kubectl version --client --short | grep -q 'Client Version: v1.24.0'; then
-                            curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.24.0/bin/linux/amd64/kubectl"
-                            chmod +x ./kubectl
-                            sudo mv ./kubectl /usr/local/bin/kubectl
-                        fi
-                    """
+                    sh '''
+                        KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+                        curl -LO "https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+                        chmod +x ./kubectl
+                        sudo mv ./kubectl /usr/local/bin/kubectl
+                    '''
                 }
             }
         }
@@ -66,15 +67,13 @@ pipeline {
         stage("Deploy to EKS") {
             steps {
                 script {
-                    // Configure kubectl to connect to the EKS cluster
                     withCredentials([awsCredentials(credentialsId: 'my-aws-credentials')]) {
-                        sh "aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION"
+                        sh """
+                            aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION
+                            sed -i 's|replaceImageTag|$ECR_REGISTRY:$IMAGE_TAG|g' k8s-manifest/deployment.yaml
+                            kubectl apply -f k8s-manifest/deployment.yaml
+                        """
                     }
-                    // Replace the image tag in the deployment manifest and apply the manifest
-                    sh """
-                        sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifest/deployment.yaml
-                        kubectl apply -f k8s-manifest/deployment.yaml
-                    """
                 }
             }
         }
