@@ -70,6 +70,7 @@ pipeline {
                             aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
                             sed -i 's/replaceImageTag/${IMAGE_TAG}/g' k8s-manifest/deployment.yaml
                             kubectl apply -f k8s-manifest/deployment.yaml
+                            kubectl apply -f k8s-manifest/service.yaml
                         """
                     }
                 }
