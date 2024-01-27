@@ -67,6 +67,9 @@ pipeline {
             }
             steps {  
                 script {
+                        withCredentials([awsCredentials(credentialsId: 'my-aws-credentials')]) {
+                        sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
+                    }
                     // Replace the image tag in the deployment manifest
                     sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifest/deployment.yaml"
                     // Change to the k8s-manifests directory and apply the manifest
