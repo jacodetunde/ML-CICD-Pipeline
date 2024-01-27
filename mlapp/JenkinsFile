@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        WORKSPACE = "${env.WORKSPACE}"
         AWS_DEFAULT_REGION = 'us-east-1'
         AWS_ACCOUNT_ID = '369886907351' // Replace with your AWS account ID
         ECR_REPOSITORY_NAME = 'jjtech-demo' // Replace with your ECR repository name
@@ -38,15 +37,14 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    
-                        sh '''
-                            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                            cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .
-                            docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG
-                            docker push $ECR_REGISTRY:$IMAGE_TAG
-                            docker rmi $ECR_REGISTRY:$IMAGE_TAG
-                            docker rmi $ECR_REPOSITORY_NAME:$IMAGE_TAG
-                        '''
+                    withCredentials([string(credentialsId: 'my-aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                        sh "echo $AWS_CREDENTIALS | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                    }
+                    sh "cd mlapp && docker build -t ${ECR_REPOSITORY_NAME}:${IMAGE_TAG} ."
+                    sh "docker tag ${ECR_REPOSITORY_NAME}:${IMAGE_TAG} ${ECR_REGISTRY}:${IMAGE_TAG}"
+                    sh "docker push ${ECR_REGISTRY}:${IMAGE_TAG}"
+                    sh "docker rmi ${ECR_REGISTRY}:${IMAGE_TAG}"
+                    sh "docker rmi ${ECR_REPOSITORY_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -54,12 +52,12 @@ pipeline {
         stage('Install kubectl') {
             steps {
                 script {
-                    sh '''
+                    sh """
                         KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
                         curl -LO "https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
                         chmod +x ./kubectl
                         sudo mv ./kubectl /usr/local/bin/kubectl
-                    '''
+                    """
                 }
             }
         }
@@ -68,12 +66,10 @@ pipeline {
             steps {
                 script {
                     withCredentials([awsCredentials(credentialsId: 'my-aws-credentials')]) {
-                        sh """
-                            aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION
-                            sed -i 's|replaceImageTag|$ECR_REGISTRY:$IMAGE_TAG|g' k8s-manifest/deployment.yaml
-                            kubectl apply -f k8s-manifest/deployment.yaml
-                        """
+                        sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
                     }
+                    sh "sed -i 's|replaceImageTag|${ECR_REGISTRY}:${IMAGE_TAG}|g' k8s-manifest/deployment.yaml"
+                    sh "kubectl apply -f k8s-manifest/deployment.yaml"
                 }
             }
         }
