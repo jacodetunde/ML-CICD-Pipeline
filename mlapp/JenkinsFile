@@ -39,7 +39,7 @@ pipeline {
                 script {
                     
                         sh '''
-                            echo $AWS_CREDENTIALS | docker login --username AWS --password-stdin $ECR_REGISTRY
+                            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
                             cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .
                             docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG
                             docker push $ECR_REGISTRY:$IMAGE_TAG
