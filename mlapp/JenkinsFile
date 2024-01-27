@@ -69,7 +69,7 @@ pipeline {
             steps {
                 script {
                     // Configure kubectl to connect to the EKS cluster
-                    withCredentials([awsCredentials(credentialsId: 'awsCredentials')]) {
+                    withCredentials([awsCredentials(credentialsId: 'my-aws-credentials')]) {
                         sh "aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION"
                     }
                     // Replace the image tag in the deployment manifest and apply the manifest
