@@ -37,7 +37,7 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'my-aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    
                         sh '''
                             echo $AWS_CREDENTIALS | docker login --username AWS --password-stdin $ECR_REGISTRY
                             cd mlapp && docker build -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .
@@ -46,7 +46,6 @@ pipeline {
                             docker rmi $ECR_REGISTRY:$IMAGE_TAG
                             docker rmi $ECR_REPOSITORY_NAME:$IMAGE_TAG
                         '''
-                    }
                 }
             }
         }
