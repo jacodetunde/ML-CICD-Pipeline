@@ -65,11 +65,13 @@ pipeline {
         stage("Deploy to EKS") {
             steps {
                 script {
-                    sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
-                        sed -i 's/replaceImageTag/${IMAGE_TAG}/g' k8s-manifest/deployment.yaml
-                        kubectl apply -f k8s-manifest/deployment.yaml
-                    """
+                    withAWS(credentials: '6b66a407-6a41-4f05-84af-32b239ec5105') {
+                        sh """
+                            aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+                            sed -i 's/replaceImageTag/${IMAGE_TAG}/g' k8s-manifest/deployment.yaml
+                            kubectl apply -f k8s-manifest/deployment.yaml
+                        """
+                    }
                 }
             }
         }
