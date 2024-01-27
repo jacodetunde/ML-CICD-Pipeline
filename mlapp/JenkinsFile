@@ -67,7 +67,7 @@ pipeline {
             }
             steps {  
                 script {
-                        withCredentials([awsCredentials(credentialsId: 'my-aws-credentials')]) {
+                        withKubeConfig([credentialsId: 'kubeconfig', serverUrl: '']) {
                         sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
                     }
                     // Replace the image tag in the deployment manifest
