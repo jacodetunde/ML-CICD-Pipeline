@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        WORKSPACE = "${env.WORKSPACE}"
         AWS_DEFAULT_REGION = 'us-east-1'
         AWS_ACCOUNT_ID = '369886907351' // Replace with your AWS account ID
         ECR_REPOSITORY_NAME = 'jjtech-demo' // Replace with your ECR repository name
