@@ -67,13 +67,13 @@ pipeline {
             }
             steps {  
                 script {
-                        sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
                     // Replace the image tag in the deployment manifest
                     sh "sed -i 's/replaceImageTag/$IMAGE_TAG/g' k8s-manifest/deployment.yaml"
                     // Change to the k8s-manifests directory and apply the manifest
                     dir('k8s-manifest') {
                         
                         // Apply the Kubernetes deployment manifest
+                        sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
                         sh "kubectl apply -f ."
                     }
                 }
