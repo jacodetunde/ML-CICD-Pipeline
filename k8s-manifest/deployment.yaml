@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: ml-app
-        image: 369886907351.dkr.ecr.us-east-1.amazonaws.com/jjtech-demo:replaceImageTag
+        image: 369886907351.dkr.ecr.us-east-1.amazonaws.com/loan-app:replaceImageTag
         ports:
         - containerPort: 8000
