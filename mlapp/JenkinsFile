@@ -7,7 +7,7 @@ pipeline {
         ECR_REPOSITORY_NAME = 'loan-app' // Replace with your ECR repository name
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
-        CLUSTER_NAME = 'jjtech-demo-cluster' // Replace with your EKS cluster name
+        CLUSTER_NAME = 'mlapps-cluster' // Replace with your EKS cluster name
     }
 
     stages {
