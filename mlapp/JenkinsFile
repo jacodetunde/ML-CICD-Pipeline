@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_DEFAULT_REGION = 'us-east-2'
         AWS_ACCOUNT_ID = '369886907351' // Replace with your AWS account ID
         ECR_REPOSITORY_NAME = 'loan-app' // Replace with your ECR repository name
         IMAGE_TAG = "${env.BUILD_NUMBER}"
